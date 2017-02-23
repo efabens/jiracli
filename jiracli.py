@@ -26,7 +26,7 @@ class Password(argparse.Action):
         if values is None:
                 values = os.getenv('JIRA_PASSWORD', 'foo')
                 if values == 'foo':
-                	values = getpass.getpass()
+                    values = getpass.getpass()
 
         setattr(namespace, self.dest, values)
 
@@ -120,14 +120,25 @@ def manPage():
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='List current tickets from jira')
+    parser = argparse.ArgumentParser(
+        description='List current tickets from jira')
 
     parser.add_argument('user', help='Username for login')
-    parser.add_argument('password', action=Password, nargs='?', help='Password. Can be specified as second argument or via prompt if not provided')
-    parser.add_argument('--for-user', dest='t_user', default='currentUser()', help='User to retrieve issues related to')
-    parser.add_argument('--unassigned', dest='show_unassigned', action='store_true', help='Show unassigned tickets in the current sprint')
-    parser.add_argument('-b', dest='board', action='store_true', help='Jira board')
-    parser.add_argument('-a', dest='returnall', action='store_true', help="Return all issues in the current sprint")    
+    parser.add_argument(
+        'password', action=Password, nargs='?',
+        help='Password. Can be specified as second argument or via prompt ' +
+        'if not provided')
+    parser.add_argument(
+        '--for-user', '-f', dest='t_user', default='currentUser()',
+        help='User to retrieve issues related to')
+    parser.add_argument(
+        '--unassigned', '-u', dest='show_unassigned', action='store_true',
+        help='Show unassigned tickets in the current sprint')
+    parser.add_argument(
+        '-b', dest='board', action='store_true', help='Jira board')
+    parser.add_argument(
+        '-a', dest='returnall', action='store_true', help='Return all issues' +
+        'in the current sprint')
     args = parser.parse_args()
 
     config = getConfig()
