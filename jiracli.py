@@ -1,7 +1,10 @@
+#!/usr/bin/env python3
+
 from jira import JIRA
 import sys
 import json
 import os
+import getpass, argparse
 
 
 class bcolors:
@@ -16,6 +19,16 @@ class bcolors:
 
     def customColor(r, g, b):
         return '\033[38;2;' + str(r) + ";" + str(g) + ";" + str(b) + 'm'
+
+
+class Password(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string):
+        if values is None:
+                values = os.getenv('JIRA_PASSWORD', 'foo')
+                if values == 'foo':
+                	values = getpass.getpass()
+
+        setattr(namespace, self.dest, values)
 
 
 def doIssues(sprint, issues):
@@ -86,12 +99,13 @@ def getConfig():
         return json.load(conf)
 
 
-def getJira():
+def getJira(user, password):
     options = {
         'server': 'https://' + config['subdomain'] + '.' + config['domain'],
         'agile_rest_path': "agile"
     }
-    return JIRA(options, basic_auth=(sys.argv[1], sys.argv[2]))
+
+    return JIRA(options, basic_auth=(user, password))
 
 
 def getBoards(jira):
@@ -106,23 +120,24 @@ def manPage():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='List current tickets from jira')
+
+    parser.add_argument('user', help='Username for login')
+    parser.add_argument('password', action=Password, nargs='?', help='Password. Can be specified as second argument or via prompt if not provided')
+    parser.add_argument('--for-user', dest='t_user', default='currentUser()', help='User to retrieve issues related to')
+    parser.add_argument('--unassigned', dest='show_unassigned', action='store_true', help='Show unassigned tickets in the current sprint')
+    parser.add_argument('-b', dest='board', action='store_true', help='Jira board')
+    parser.add_argument('-a', dest='returnall', action='store_true', help="Return all issues in the current sprint")    
+    args = parser.parse_args()
+
     config = getConfig()
-    if ('-h' in sys.argv):
-        manPage()
-    elif len(sys.argv) <= 3:
-        jira = getJira()
-        retrieveIssues(jira, "currentUser()")
-    elif len(sys.argv) == 4 and sys.argv[3] == '-u':
-        jira = getJira()
+    jira = getJira(args.user, args.password)
+
+    if args.show_unassigned:
         retrieveIssues(jira, 'null')
-    elif len(sys.argv) == 5 and sys.argv[3] == '-u':
-        jira = getJira()
-        retrieveIssues(jira, sys.argv[4])
-    elif len(sys.argv) == 4 and sys.argv[3] == '-b':
-        jira = getJira()
+    elif args.board:
         getBoards(jira)
-    elif len(sys.argv) == 4 and sys.argv[3] == '-a':
-        jira = getJira()
+    elif args.returnall:
         getAllIssues(jira)
     else:
-        print('Options passed in are not valid')
+        retrieveIssues(jira, args.t_user)
