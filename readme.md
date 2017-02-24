@@ -11,10 +11,10 @@ This is only python3 compatible, though it would be pretty straightforward to po
 `-h` see help page
 
 
-`-u` see unassigned stories in the current sprint
+`-u` `--unassigned` see unassigned stories in the current sprint
 
 
-`-u [username]` returns all issues for the given user
+`-f [username]` `--for-user [username]` returns all issues for the given user
 
 
 `-a` returns all issues in the given sprint
