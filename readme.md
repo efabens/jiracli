@@ -1,13 +1,13 @@
 This is only python3 compatible, though it would be pretty straightforward to port
 
-###Arguments
+### Arguments
 1. username
 2. password
 3. optional flags
 4. give -u flag a username
 
 
-###optional flags:
+### optional flags:
 `-h` see help page
 
 
@@ -35,7 +35,7 @@ A conf file named jira.conf needs to be in the same directory as the python file
 }
 ```
 
-###Python Package Dependencies
+### Python Package Dependencies
 jira (and it's dependencies)
 
 `pip install jira`
