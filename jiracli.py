@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from jira import JIRA
-import sys
 import json
 import os
 import getpass, argparse
@@ -24,15 +23,14 @@ class bcolors:
 class Password(argparse.Action):
     def __call__(self, parser, namespace, values, option_string):
         if values is None:
-                values = os.getenv('JIRA_PASSWORD', 'foo')
-                if values == 'foo':
-                    values = getpass.getpass()
+            values = os.getenv('JIRA_PASSWORD', 'foo')
+            if values == 'foo':
+                values = getpass.getpass()
 
         setattr(namespace, self.dest, values)
 
 
 def doIssues(sprint, issues):
-
     concatName = sprint.name + ' | ' + str(sprint.id) + ' | ' + sprint.state
     print(bcolors.HEADER + concatName + bcolors.ENDC)
     for i in issues:
@@ -54,44 +52,45 @@ def doIssues(sprint, issues):
         print(color + key + end + summary)
 
 
-def getAppropriateSprint():
+def getAppropriateSprint(which_types):
     # Use the get boards method to determine which board you want sprint info
     # for
-    sprints = jira.sprints(config["board"])
+    boards = config['board']
+    sprints = []
+    for i in boards:
+        sprints += jira.sprints(i)
 
     active = [i for i in sprints if i.state == 'active']
     future = [i for i in sprints if i.state == 'future']
+    closed = [i for i in sprints if i.state == 'closed']
 
-    if active:
-        return active[0]
-    elif future:
-        return future[0]
-    else:
-        raise RuntimeError("No active or future sprints could be found")
-
-
-def retrieveIssues(jira, assignee):
-    sprint = getAppropriateSprint()
-    issues = jira.search_issues(
-        'assignee=' + assignee + ' and sprint=' + str(sprint.id))
-    doIssues(sprint, issues)
+    return_list = []
+    if 'c' in which_types:
+        return_list += closed
+    if 'a' in which_types:
+        return_list += active
+    if 'f' in which_types:
+        return_list += future
+    if not return_list:
+        raise RuntimeError("No sprints were found matching specified criteria")
+    return return_list
 
 
-def retrievePersonalIssues(jira):
-    sprint = getAppropriateSprint()
+def retrieveIssues(jira, assignee, which_types):
+    sprints = getAppropriateSprint(which_types)
+    for sprint in sprints:
+        issues = jira.search_issues(
+            'assignee=' + assignee + ' and sprint=' + str(sprint.id))
+        if issues:
+            doIssues(sprint, issues)
 
-    issues = jira.search_issues(
-        'assignee = currentUser() and' +
-        ' sprint=' + str(sprint.id))
-    doIssues(sprint, issues)
 
-
-def getAllIssues(jira):
-    sprint = getAppropriateSprint()
-
-    issues = jira.search_issues(
-        ' sprint=' + str(sprint.id))
-    doIssues(sprint, issues)
+def getAllIssues(jira, which_types):
+    sprints = getAppropriateSprint(which_types)
+    for sprint in sprints:
+        issues = jira.search_issues(
+            ' sprint=' + str(sprint.id))
+        doIssues(sprint, issues)
 
 
 def getConfig():
@@ -127,7 +126,7 @@ if __name__ == '__main__':
     parser.add_argument(
         'password', action=Password, nargs='?',
         help='Password. Can be specified as second argument or via prompt ' +
-        'if not provided')
+             'if not provided')
     parser.add_argument(
         '--for-user', '-f', dest='t_user', default='currentUser()',
         help='User to retrieve issues related to')
@@ -137,8 +136,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '-b', dest='board', action='store_true', help='Jira board')
     parser.add_argument(
-        '-a', dest='returnall', action='store_true', help='Return all issues' +
-        'in the current sprint')
+        '-a', dest='returnall', action='store_true', help='Return all issues ' +
+                                                          'in the current sprint')
+    parser.add_argument(
+        '-w', '--which', dest='board_type', default='a',
+        help='Set which types of sprints should be returned, currently supported is "a" : active, "f": future,'
+             ' "c": closed. Values are additive. Boards will always be displayed in order Past, Active, Future. Within '
+             'sections order is not specified. Using "c" can take a long time')
     args = parser.parse_args()
 
     config = getConfig()
@@ -149,6 +153,6 @@ if __name__ == '__main__':
     elif args.board:
         getBoards(jira)
     elif args.returnall:
-        getAllIssues(jira)
+        getAllIssues(jira, args.board_type)
     else:
-        retrieveIssues(jira, args.t_user)
+        retrieveIssues(jira, args.t_user, args.board_type)
