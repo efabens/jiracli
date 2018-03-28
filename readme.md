@@ -29,7 +29,7 @@ A conf file named jira.conf needs to be in the same directory as the python file
 
 ```json
 {
-"board": 7,
+"board": [7, 2],
 "subdomain": "subdomain",
 "domain": "domain.net"
 }
