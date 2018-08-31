@@ -3,7 +3,8 @@
 from jira import JIRA
 import json
 import os
-import getpass, argparse
+import getpass
+import argparse
 
 
 class bcolors:
@@ -37,6 +38,7 @@ def doIssues(sprint, issues):
         status = i.fields.status.name
         key = "[" + i.key + "] " + status + " "
         summary = i.fields.summary
+        url = ' https://' + config['subdomain'] + '.' + config['domain'] + "/browse/" + i.key
         end = bcolors.ENDC
         if status in ["Resolved", "Ready to Test"]:
             color = bcolors.customColor(46, 139, 87)
@@ -49,7 +51,7 @@ def doIssues(sprint, issues):
         else:
             color = ''
             end = ''
-        print(color + key + end + summary)
+        print(color + key + end + summary + " " + bcolors.OKBLUE + url + end)
 
 
 def getAppropriateSprint(which_types):
@@ -149,7 +151,7 @@ if __name__ == '__main__':
     jira = getJira(args.user, args.password)
 
     if args.show_unassigned:
-        retrieveIssues(jira, 'null')
+        retrieveIssues(jira, 'null', args.board_type)
     elif args.board:
         getBoards(jira)
     elif args.returnall:
