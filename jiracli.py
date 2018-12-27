@@ -40,14 +40,15 @@ def doIssues(sprint, issues):
         summary = i.fields.summary
         url = ' https://' + config['subdomain'] + '.' + config['domain'] + "/browse/" + i.key
         end = bcolors.ENDC
-        if status in ["Resolved", "Ready to Test"]:
-            color = bcolors.customColor(46, 139, 87)
-        elif status == "To Do":
-            color = bcolors.customColor(255, 140, 0)
-        elif status == "Done":
-            color = bcolors.customColor(30, 144, 255)
-        elif status == "In Progress":
-            color = bcolors.customColor(186, 85, 211)
+        if status in colors:
+            color = bcolors.customColor(*colors[status])
+        elif "default" in colors:
+            if colors['default'] == "debug":
+                print(status + " does not yet have a defined color")
+                color = ''
+                end = ''
+            else:
+                color = bcolors.customColor(*colors["default"])
         else:
             color = ''
             end = ''
@@ -97,8 +98,64 @@ def getAllIssues(jira, which_types):
 
 def getConfig():
     with open(os.path.dirname(__file__) + "/jira.conf", 'r') as conf:
-        return json.load(conf)
+        aconfig = json.load(conf)
+        return aconfig
 
+def statusColors(conf):
+    with open(os.path.dirname(__file__) + "/status-color.conf", 'r') as default_colors:
+        d_colors = json.load(default_colors)
+    c_colors = {}
+    for i,j in d_colors.items():
+        c_colors[i] = j
+    if "status-colors" in conf:
+        if "default" in conf['status-colors']:
+            default = conf['status-colors']['default']
+            if verify_color(default) or default == "debug":
+                c_colors['default'] = default
+        if "custom-colors" in conf['status-colors']:
+            custom = conf['status-colors']['custom-colors']
+            round2 = {}
+            for i, j in custom.items():
+                if verify_color(j):
+                    c_colors[i] = j
+                else:
+                    if type(j) is str:
+                        round2[i] = j
+                    else:
+                        print("Color for Status " + str(i) + "could not be resolved")
+            for i, j in round2.items():
+                if j in c_colors:
+                    c_colors[i] = c_colors[j]
+                else:
+                    resolved = resolve_color(j, round2, c_colors)
+                    if verify_color(resolved):
+                        c_colors[i] = resolved
+                    else:
+                        print("Color for Status " + str(i) + " could not be resolved")
+    return c_colors 
+
+def resolve_color(name, resolving_dict, final_dict):
+    if name in resolving_dict:
+        name_prime = resolving_dict[name]
+    else:
+
+        return None
+    while name_prime is not name:
+        if name_prime in final_dict:
+            return final_dict[name_prime]
+        elif name_prime in resolving_dict:
+            name_prime = resolving_dict[name_prime]
+        else:
+            return None
+    return None
+
+
+
+def verify_color(rgb):
+    if type(rgb) is list and len(rgb) == 3:
+        return all([i>=0 and i<=255 for i in rgb])
+    else:
+        return False
 
 def getJira(user, password):
     options = {
@@ -145,9 +202,12 @@ if __name__ == '__main__':
         help='Set which types of sprints should be returned, currently supported is "a" : active, "f": future,'
              ' "c": closed. Values are additive. Boards will always be displayed in order Past, Active, Future. Within '
              'sections order is not specified. Using "c" can take a long time')
+
     args = parser.parse_args()
 
     config = getConfig()
+    colors = statusColors(config)
+
     jira = getJira(args.user, args.password)
 
     if args.show_unassigned:
