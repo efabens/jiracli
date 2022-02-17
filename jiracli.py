@@ -59,7 +59,19 @@ def getAppropriateSprint(which_types):
     # Use the get boards method to determine which board you want sprint info
     # for
     boards = config['board']
-    sprints = []
+    # sprints = []
+    existing_boards = jira.projects()
+    sprints = jira.sprints()
+    issue = jira.issue("ops-903")
+    print(issue)
+    for i in sprints:
+        all_sprints = jira.sprints(i.id)
+        for s in all_sprints:
+            if s.name.lower() == "zigzaggery":
+                print("board", i)
+                print("sprint". s)
+
+    print("out of loops")
     for i in boards:
         sprints += jira.sprints(i)
 
