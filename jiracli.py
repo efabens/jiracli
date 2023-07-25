@@ -16,7 +16,8 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-    def customColor(r, g, b):
+    @staticmethod
+    def custom_color(r, g, b):
         return '\033[38;2;' + str(r) + ";" + str(g) + ";" + str(b) + 'm'
 
 
@@ -30,32 +31,35 @@ class Password(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
-def doIssues(sprint, issues):
-    concatName = sprint.name + ' | ' + str(sprint.id) + ' | ' + sprint.state
-    print(bcolors.HEADER + concatName + bcolors.ENDC)
+def do_issues(sprint, issues):
+    # concatName = sprint.name + ' | ' + str(sprint.id) + ' | ' + sprint.state
+    # print(bcolors.HEADER + concatName + bcolors.ENDC)
     for i in issues:
         status = i.fields.status.name
         key = "[" + i.key + "] " + status + " "
         summary = i.fields.summary
         end = bcolors.ENDC
         if status in ["Resolved", "Ready to Test"]:
-            color = bcolors.customColor(46, 139, 87)
-        elif status == "To Do":
-            color = bcolors.customColor(255, 140, 0)
+            color = bcolors.custom_color(46, 139, 87)
+        elif status in ["To Do", "Selected for Development", "Open"]:
+            color = bcolors.custom_color(255, 140, 0)
         elif status == "Done":
-            color = bcolors.customColor(30, 144, 255)
+            color = bcolors.custom_color(30, 144, 255)
         elif status == "In Progress":
-            color = bcolors.customColor(186, 85, 211)
+            color = bcolors.custom_color(186, 85, 211)
+        elif status == "Backlog":
+            color = bcolors.custom_color(30, 144, 255)
         else:
             color = ''
             end = ''
         print(color + key + end + summary)
 
 
-def getAppropriateSprint(which_types):
+def get_appropriate_sprint(which_types):
     # Use the get boards method to determine which board you want sprint info
     # for
     boards = config['board']
+    print(boards)
     sprints = []
     for i in boards:
         sprints += jira.sprints(i)
@@ -76,24 +80,24 @@ def getAppropriateSprint(which_types):
     return return_list
 
 
-def retrieveIssues(jira, assignee, which_types):
-    sprints = getAppropriateSprint(which_types)
+def retrieve_issues(jira, assignee, which_types):
+    sprints = get_appropriate_sprint(which_types)
     for sprint in sprints:
         issues = jira.search_issues(
             'assignee=' + assignee + ' and sprint=' + str(sprint.id))
         if issues:
-            doIssues(sprint, issues)
+            do_issues(sprint, issues)
 
 
-def getAllIssues(jira, which_types):
-    sprints = getAppropriateSprint(which_types)
-    for sprint in sprints:
-        issues = jira.search_issues(
-            ' sprint=' + str(sprint.id))
-        doIssues(sprint, issues)
+def get_all_issues(jira, which_types):
+    # sprints = getAppropriateSprint(which_types)
+    # for sprint in sprints:
+    issues = jira.search_issues(
+        'assignee = currentUser() and statusCategory != Done order BY status ASC, updatedDate DESC')
+    do_issues("", issues)
 
 
-def getConfig():
+def get_config():
     with open(os.path.dirname(__file__) + "/jira.conf", 'r') as conf:
         return json.load(conf)
 
@@ -107,13 +111,13 @@ def getJira(user, password):
     return JIRA(options, basic_auth=(user, password))
 
 
-def getBoards(jira):
+def get_boards(jira):
     boards = sorted(jira.boards(), key=lambda x: x.name)
     for i in boards:
         print(bcolors.HEADER + str(i.id) + bcolors.ENDC, i.name)
 
 
-def manPage():
+def man_page():
     with open(os.path.dirname(__file__) + "/readme.md", 'r') as manpage:
         print(manpage.read())
 
@@ -145,14 +149,14 @@ if __name__ == '__main__':
              'sections order is not specified. Using "c" can take a long time')
     args = parser.parse_args()
 
-    config = getConfig()
+    config = get_config()
     jira = getJira(args.user, args.password)
 
     if args.show_unassigned:
-        retrieveIssues(jira, 'null')
+        retrieve_issues(jira, 'null', [])
     elif args.board:
-        getBoards(jira)
-    elif args.returnall:
-        getAllIssues(jira, args.board_type)
+        get_boards(jira)
     else:
-        retrieveIssues(jira, args.t_user, args.board_type)
+        get_all_issues(jira, args.board_type)
+    # else:
+    #     retrieve_issues(jira, args.t_user, args.board_type)
