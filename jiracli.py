@@ -4,6 +4,7 @@ from jira import JIRA
 import json
 import os
 import getpass, argparse
+from sys import stdout
 
 
 class bcolors:
@@ -47,14 +48,18 @@ def do_issues(sprint, issues):
             color = bcolors.custom_color(30, 144, 255)
         elif status == "In Progress":
             color = bcolors.custom_color(186, 85, 211)
-        elif status == "Backlog":
+        elif status in ["Backlog", "FRONTLOG"]:
             color = bcolors.custom_color(30, 144, 255)
+        elif status in ["New"]:
+            color = bcolors.custom_color(255, 31, 143)
         else:
             color = ''
             end = ''
-        print(color + key + end + summary)
-
-
+        if stdout.isatty():
+            print(color + key + end + summary)
+        else:
+            print(key + summary)
+    
 def get_appropriate_sprint(which_types):
     # Use the get boards method to determine which board you want sprint info
     # for
