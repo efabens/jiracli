@@ -102,6 +102,125 @@ def get_all_issues(jira, which_types):
     do_issues("", issues)
 
 
+def get_ticket_for_llm(jira, ticket_id):
+    try:
+        issue = jira.issue(ticket_id, expand='changelog,renderedFields')
+        
+        # Format the output for LLM processing
+        output = []
+        output.append(f"# JIRA Ticket: {issue.key}")
+        output.append(f"**URL:** https://{config['subdomain']}.{config['domain']}/browse/{issue.key}")
+        output.append("")
+        
+        # Basic information
+        output.append("## Basic Information")
+        output.append(f"**Summary:** {issue.fields.summary}")
+        output.append(f"**Status:** {issue.fields.status.name}")
+        output.append(f"**Type:** {issue.fields.issuetype.name}")
+        
+        if hasattr(issue.fields, 'priority') and issue.fields.priority:
+            output.append(f"**Priority:** {issue.fields.priority.name}")
+        
+        output.append("")
+        
+        # People
+        output.append("## People")
+        if issue.fields.assignee:
+            output.append(f"**Assignee:** {issue.fields.assignee.displayName}")
+        else:
+            output.append("**Assignee:** Unassigned")
+            
+        if issue.fields.reporter:
+            output.append(f"**Reporter:** {issue.fields.reporter.displayName}")
+            
+        if issue.fields.creator:
+            output.append(f"**Creator:** {issue.fields.creator.displayName}")
+        
+        output.append("")
+        
+        # Dates
+        output.append("## Dates")
+        if issue.fields.created:
+            output.append(f"**Created:** {issue.fields.created}")
+        if issue.fields.updated:
+            output.append(f"**Updated:** {issue.fields.updated}")
+        if hasattr(issue.fields, 'resolutiondate') and issue.fields.resolutiondate:
+            output.append(f"**Resolved:** {issue.fields.resolutiondate}")
+        if hasattr(issue.fields, 'duedate') and issue.fields.duedate:
+            output.append(f"**Due Date:** {issue.fields.duedate}")
+        
+        output.append("")
+        
+        # Description
+        if issue.fields.description:
+            output.append("## Description")
+            output.append(issue.fields.description)
+            output.append("")
+        
+        # Components
+        if issue.fields.components:
+            output.append("## Components")
+            for component in issue.fields.components:
+                output.append(f"- {component.name}")
+            output.append("")
+        
+        # Labels
+        if issue.fields.labels:
+            output.append("## Labels")
+            output.append(f"{', '.join(issue.fields.labels)}")
+            output.append("")
+        
+        # Fix versions
+        if hasattr(issue.fields, 'fixVersions') and issue.fields.fixVersions:
+            output.append("## Fix Versions")
+            for version in issue.fields.fixVersions:
+                output.append(f"- {version.name}")
+            output.append("")
+        
+        # Parent/Epic
+        if hasattr(issue.fields, 'parent') and issue.fields.parent:
+            output.append("## Parent Issue")
+            output.append(f"**{issue.fields.parent.key}:** {issue.fields.parent.fields.summary}")
+            output.append("")
+        
+        # Subtasks
+        if hasattr(issue.fields, 'subtasks') and issue.fields.subtasks:
+            output.append("## Subtasks")
+            for subtask in issue.fields.subtasks:
+                output.append(f"- **{subtask.key}** ({subtask.fields.status.name}): {subtask.fields.summary}")
+            output.append("")
+        
+        # Issue links
+        if hasattr(issue.fields, 'issuelinks') and issue.fields.issuelinks:
+            output.append("## Linked Issues")
+            for link in issue.fields.issuelinks:
+                if hasattr(link, 'outwardIssue') and link.outwardIssue:
+                    output.append(f"- **{link.type.outward}** {link.outwardIssue.key}: {link.outwardIssue.fields.summary}")
+                elif hasattr(link, 'inwardIssue') and link.inwardIssue:
+                    output.append(f"- **{link.type.inward}** {link.inwardIssue.key}: {link.inwardIssue.fields.summary}")
+            output.append("")
+        
+        # Comments
+        if issue.fields.comment.comments:
+            output.append("## Comments")
+            for comment in issue.fields.comment.comments:
+                output.append(f"### Comment by {comment.author.displayName} on {comment.created}")
+                output.append(comment.body)
+                output.append("")
+        
+        # Attachments
+        if hasattr(issue.fields, 'attachment') and issue.fields.attachment:
+            output.append("## Attachments")
+            for attachment in issue.fields.attachment:
+                output.append(f"- **{attachment.filename}** ({attachment.size} bytes) - {attachment.created}")
+            output.append("")
+        
+        return "\n".join(output)
+        
+    except Exception as e:
+        return f"Error retrieving ticket {ticket_id}: {str(e)}"
+
+
 def get_config():
     with open(os.path.dirname(__file__) + "/jira.conf", 'r') as conf:
         return json.load(conf)
@@ -152,12 +271,17 @@ if __name__ == '__main__':
         help='Set which types of sprints should be returned, currently supported is "a" : active, "f": future,'
              ' "c": closed. Values are additive. Boards will always be displayed in order Past, Active, Future. Within '
              'sections order is not specified. Using "c" can take a long time')
+    parser.add_argument(
+        '-t', '--ticket', dest='ticket_id',
+        help='Retrieve a specific ticket by ID and display it in LLM-friendly format')
     args = parser.parse_args()
 
     config = get_config()
     jira = getJira(args.user, args.password)
 
-    if args.show_unassigned:
+    if args.ticket_id:
+        print(get_ticket_for_llm(jira, args.ticket_id))
+    elif args.show_unassigned:
         retrieve_issues(jira, 'null', [])
     elif args.board:
         get_boards(jira)

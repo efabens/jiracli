@@ -22,6 +22,9 @@ This is only python3 compatible, though it would be pretty straightforward to po
 
 `-b` see all boards, this is used to determine the board number in the conf file
 
+
+`-t [ticket_id]` `--ticket [ticket_id]` retrieve a specific ticket by ID and display it in LLM-friendly format
+
 ### Configuration
 A conf file named jira.conf needs to be in the same directory as the python file. It should be a standard json file with 3 required fields:
 
