@@ -229,7 +229,8 @@ def get_config():
 def getJira(user, password):
     options = {
         'server': 'https://' + config['subdomain'] + '.' + config['domain'],
-        'agile_rest_path': "agile"
+        'agile_rest_path': "agile",
+        'rest_api_version': '3'
     }
 
     return JIRA(options, basic_auth=(user, password))
